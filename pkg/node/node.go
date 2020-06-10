@@ -27,7 +27,7 @@ import (
 	"net"
 	"strings"
 	"time"
-	"k8s.io/client-go/kubernetes"
+
 	"edgenet/pkg/authorization"
 	"edgenet/pkg/node/infrastructure"
 
@@ -231,8 +231,12 @@ func SetHostname(hostRecord namecheap.DomainDNSHost) (bool, string) {
 }
 
 // CreateJoinToken generates token to be used on adding a node onto the cluster
-func CreateJoinToken(ttl string, hostname string , clientset kubernetes.Interface) string {
-	
+func CreateJoinToken(ttl string, hostname string) string {
+	clientset, err := authorization.CreateClientSet()
+	if err != nil {
+		log.Println(err.Error())
+		panic(err.Error())
+	}
 	duration, _ := time.ParseDuration(ttl)
 	token, err := infrastructure.CreateToken(clientset, duration, hostname)
 	if err != nil {
@@ -243,8 +247,12 @@ func CreateJoinToken(ttl string, hostname string , clientset kubernetes.Interfac
 }
 
 // GetList uses clientset to get node list of the cluster
-func GetList(clientset kubernetes.Interface) []string {
-	
+func GetList() []string {
+	clientset, err := authorization.CreateClientSet()
+	if err != nil {
+		log.Println(err.Error())
+		panic(err.Error())
+	}
 
 	nodesRaw, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
@@ -260,7 +268,7 @@ func GetList(clientset kubernetes.Interface) []string {
 }
 
 // GetStatusList uses clientset to get node list of the cluster that contains Ready State info
-func GetStatusList(clientset kubernetes.Interface) []byte {
+func GetStatusList() []byte {
 	type nodeStatus struct {
 		Node       string   `json:"node"`
 		Ready      string   `json:"ready"`
@@ -274,6 +282,11 @@ func GetStatusList(clientset kubernetes.Interface) []byte {
 		Continent  string   `json:"continent"`
 		Lon        string   `json:"lon"`
 		Lat        string   `json:"lat"`
+	}
+	clientset, err := authorization.CreateClientSet()
+	if err != nil {
+		log.Println(err.Error())
+		panic(err.Error())
 	}
 
 	nodesRaw, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{})
@@ -343,12 +356,17 @@ func GetConditionReadyStatus(node *corev1.Node) string {
 }
 
 // getNodeByHostname uses clientset to get namespace requested
-func getNodeByHostname(hostname string, clientset kubernetes.Interface) (string, error) {
-	
+func getNodeByHostname(hostname string) (string, error) {
+	clientset, err := authorization.CreateClientSet()
+	if err != nil {
+		log.Println(err.Error())
+		panic(err.Error())
+	}
+
 	// Examples for error handling:
 	// - Use helper functions like e.g. errors.IsNotFound()
 	// - And/or cast to StatusError and use its properties like e.g. ErrStatus.Message
-	_, err := clientset.CoreV1().Nodes().Get(hostname, metav1.GetOptions{})
+	_, err = clientset.CoreV1().Nodes().Get(hostname, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		log.Printf("Node %s not found", hostname)
 		return "false", err
